@@ -67,15 +67,15 @@ class Neuroduino:
         if self.is_open():
             self._send_message("BLINK")
 
-    def send_pulse_up(self, num = 1):
+    def start_pulse(self, trigger = 1):
         if not self.is_open():
             return None
-        if(num > 15):
+        if(trigger > 15):
             raise ValueError("Value cannot be larger than 15")
-        msg = f'PULSE+{i:04b}'
+        msg = f'PULSE+{trigger:04b}'
         self._send_message(msg)
 
-    def send_pulse_down(self):
+    def cancel_pulse(self):
         if self.is_open():
             self._send_message("PULSE-")
 

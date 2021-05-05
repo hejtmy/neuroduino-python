@@ -16,7 +16,7 @@ class ArduinoModel(Enum):
     Uno = 2
 
 class Neuroduino:
-    def __init__(self, port = "COM5", baudrate = 9600, timeout = 0.1, model = ArduinoModel.Leonardo, want_threading = False):
+    def __init__(self, port = "", baudrate = 9600, timeout = 0.1, model = ArduinoModel.Leonardo, want_threading = False):
         self.arduinoConnection = serial.Serial()
         self.arduinoConnection.port = port
         self.arduinoConnection.timeout = timeout
@@ -87,7 +87,7 @@ class Neuroduino:
         if self.is_open():
             self._send_message("PHOTO-")
 
-    def arduino_done(self):
+    def arduino_done(self, internal_time = None):
         return None
 
     def sensor_activated(self, line):
@@ -175,7 +175,9 @@ class Neuroduino:
             line = self.readline()
             if line is not None:
                 if "DONE" in line:
-                    self.arduino_done()
+                    print("Done")
+                    internal_time = line[4:len(line) - 1]
+                    self.arduino_done(internal_time)
                 if "SENSOR" in line:
                     self.sensor_activated(line)
 

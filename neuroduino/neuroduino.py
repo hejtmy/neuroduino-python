@@ -6,6 +6,7 @@ Created on Mon Feb  8 19:26:38 2016
 import threading
 import serial
 import serial.threaded
+import time
 import sys
 import glob
 from enum import Enum
@@ -48,10 +49,19 @@ class Neuroduino:
             self.disconnect()
             self.connect()
 
-    '''
-    Slightly modified readline that converts the byte data to utf-8 format
-    '''
+
     def readline(self, connection = None):
+        """Slightly modified readline that converts the byte data to utf-8 format
+
+        Args:
+            connection ([type], optional): [description]. Defaults to None.
+
+        Raises:
+            ValueError: [description]
+
+        Returns:
+            [type]: [description]
+        """
         if connection is None:
             connection = self.arduinoConnection
         if not connection.isOpen():
@@ -62,10 +72,12 @@ class Neuroduino:
         except Exception as ex:
             print(ex)
 
+
     # Experimental functions
     def blink(self):
         if self.is_open():
             self._send_message("BLINK")
+
 
     def start_pulse(self, trigger = 1):
         if not self.is_open():
@@ -75,22 +87,47 @@ class Neuroduino:
         msg = f'PULSE+{trigger:04b}'
         self._send_message(msg)
 
+
     def cancel_pulse(self):
         if self.is_open():
             self._send_message("PULSE-")
+
 
     def photoresistor_start(self):
         if self.is_open():
             self._send_message("PHOTO+")
 
+
     def photoresistor_stop(self):
         if self.is_open():
             self._send_message("PHOTO-")
+    
+
+    def photoresistor_calibrate(self):
+        """Sends calibration command. 
+        
+        The calibration on the arduino lasts 100ms. You should set the state which you want to 
+
+        Returns:
+            [type]: [description]
+        """
+        if not self.is_open():
+            return False
+        self._send_message("PHOTO-CALIBRATE")
+        return True
+    
+    ### THREADING FUNCTIONS
+    # Overwrite for desired functionality
 
     def arduino_done(self, internal_time = None):
         return None
 
-    def sensor_activated(self, line):
+
+    def photoresistor_activated(self, internal_time = None):
+        return None
+
+
+    def photoresistor_data(self, value = None):
         return None
 
     # PRIVATE CONNECTION PART
@@ -141,13 +178,21 @@ class Neuroduino:
         else:
             return
 
-    '''
-    Returns True/False depending on reception of specific message
 
-    Sends 'WHO' byte message to the serial connection and waits for the response
-    If there is ARDUINO by message in the response, function returns TRUE, otherwise False
-    '''
     def _test_connection(self, connection):
+        """[summary]
+
+        Returns True/False depending on reception of specific message
+
+        Sends 'WHO' byte message to the serial connection and waits for the response
+        If there is ARDUINO by message in the response, function returns TRUE, otherwise Fals
+
+        Args:
+            connection ([type]): [description]
+
+        Returns:
+            [type]: [description]
+        """
         self._serial_send_message(connection, 'WHO')
         line = self.readline(connection)
         if "NEURODUINO" in line:
@@ -167,25 +212,30 @@ class Neuroduino:
         self.read_thread = threading.Thread(target = self._check_incoming, daemon = True)
         self.read_thread.start()
 
+
     def _stop_threading(self):
         self.read_thread = None
+
 
     def _check_incoming(self):
         while self.is_open():
             line = self.readline()
             if line is not None:
                 if "DONE" in line:
-                    print("Done")
-                    internal_time = line[4:len(line) - 1]
-                    self.arduino_done(internal_time)
-                if "SENSOR" in line:
-                    self.sensor_activated(line)
+                    t = line[4:len(line) - 1]
+                    self.arduino_done(t)
+                if "PHOTO-HIGH" in line:
+                    t = line[4:len(line) - 1]
+                    self.photoresistor_activated(t)
+
 
     def _send_prepared(self):
         self._send_message("DONE")
 
+
     def _send_message(self, message):
         self._serial_send_message(self.arduinoConnection, message)
+
 
     @staticmethod
     def _serial_send_message(connection, message):
